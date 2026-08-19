@@ -52,6 +52,7 @@ import {
 } from "../../shared/settings.ts";
 import { discoverAvailableSkills, normalizeSkillInput } from "../../agents/skills.ts";
 import { buildAsyncRunnerSteps, DEFAULT_ASYNC_TIMEOUT_MS, executeAsyncChain, executeAsyncSingle, formatAsyncStartedMessage, isAsyncAvailable, workflowAwaitedAsyncResultPath } from "../background/async-execution.ts";
+import { supportsDeferredWake } from "../background/session-mode.ts";
 import { updateActiveRunIndex } from "../background/active-run-index.ts";
 import { steeringReceipt } from "../background/steering.ts";
 import { acquireActiveAsyncCapacity, ActiveAsyncCapacityError, getActiveAsyncCapacitySnapshot, resolveMaxActiveAsyncRunsPerSession, transferActiveAsyncCapacity, type ActiveAsyncCapacityHandle } from "../background/active-async-capacity.ts";
@@ -1158,7 +1159,7 @@ function appendStepToAsyncChain(input: {
 		currentModelProvider: parentModel?.provider,
 		currentModel: parentModel,
 		modelScope: discoveredForAppend.modelScope,
-		interactive: input.ctx.hasUI,
+		deferredWake: supportsDeferredWake(input.ctx),
 		permissions: input.deps.config.permissions,
 	});
 	const built = buildAsyncRunnerSteps(resolved.id, compactOptional<Parameters<typeof buildAsyncRunnerSteps>[1]>({
@@ -1607,7 +1608,7 @@ async function resumeAsyncRun(input: {
 				currentModelProvider: parentModel?.provider,
 				currentModel: parentModel,
 				modelScope,
-				interactive: input.ctx.hasUI,
+				deferredWake: supportsDeferredWake(input.ctx),
 		permissions: input.deps.config.permissions,
 			}),
 			availableModels,
@@ -1645,7 +1646,7 @@ async function resumeAsyncRun(input: {
 			result.details.asyncDir ? `Async dir: ${result.details.asyncDir}` : undefined,
 			`Status if needed: subagent({ action: "status", id: "${attachedId}" })`,
 		].filter((line): line is string => Boolean(line));
-		return { content: [{ type: "text", text: formatAsyncStartedMessage(lines.join("\n"), input.ctx.hasUI) }], details: result.details };
+		return { content: [{ type: "text", text: formatAsyncStartedMessage(lines.join("\n"), supportsDeferredWake(input.ctx)) }], details: result.details };
 	}
 
 	const sourceAsyncDir = target.source === "async" ? target.asyncDir : undefined;
@@ -1702,7 +1703,7 @@ async function resumeAsyncRun(input: {
 			currentModelProvider: parentModel?.provider,
 			currentModel: parentModel,
 			modelScope,
-			interactive: input.ctx.hasUI,
+			deferredWake: supportsDeferredWake(input.ctx),
 		permissions: input.deps.config.permissions,
 		}),
 		cwd: effectiveCwd,
@@ -1840,7 +1841,7 @@ async function resumeAsyncRun(input: {
 		`Status if needed: subagent({ action: "status", id: "${revivedId}" })`,
 	].filter((line): line is string => Boolean(line));
 	return {
-		content: [{ type: "text", text: formatAsyncStartedMessage(lines.join("\n"), input.ctx.hasUI) }],
+		content: [{ type: "text", text: formatAsyncStartedMessage(lines.join("\n"), supportsDeferredWake(input.ctx)) }],
 		details: {
 			...result.details,
 			...(target.launchContractDigest ? { sourceLaunchContractDigest: target.launchContractDigest } : {}),
@@ -2739,7 +2740,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		currentModelProvider: parentModel?.provider,
 		currentModel: parentModel,
 		modelScope: data.modelScope,
-		interactive: ctx.hasUI,
+		deferredWake: supportsDeferredWake(ctx),
 		permissions: deps.config.permissions,
 	});
 	const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map(toModelInfo);
@@ -4169,7 +4170,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 					}
 				});
 				return attachWorkflowMission(withRunFanoutBudget({
-					content: [{ type: "text", text: formatAsyncStartedMessage(`Async workflow [${workflowRunId}]`, ctx.hasUI === true) }],
+					content: [{ type: "text", text: formatAsyncStartedMessage(`Async workflow [${workflowRunId}]`, supportsDeferredWake(ctx)) }],
 					details: { mode: "workflow", runId: workflowRunId, toolCallId, asyncId: workflowRunId, asyncDir, results: [], chatProgress, ...(deps.state.activeAsyncCapacity ? { activeAsyncCapacity: deps.state.activeAsyncCapacity } : {}) },
 				}, workflowFanoutBudget));
 			}

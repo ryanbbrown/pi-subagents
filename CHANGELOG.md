@@ -12,6 +12,7 @@
 
 ### Fixed
 - Keep independent Pi sessions in one process from running each other's extension cleanup while preserving cleanup on reload of the same session runtime.
+- Let long-lived RPC hosts receive deferred async completion wakes even when they do not provide Pi's optional extension UI context, instead of blocking `agent_end` to auto-drain child work.
 - Add explicit `isolation: "none"` for schema-driven workflows without Git worktree setup, while retaining strict `isolation: "worktree"` behavior. Thanks to [@tlsneo](https://github.com/tlsneo) for #1203.
 - Fail closed when an existing external-job `status.json` is unreadable or malformed, including an invalid `steps` shape, instead of starting a new provider job.
 - Describe `async:false` as a blocking parent wait, not a UI or foreground-only mode.

@@ -132,8 +132,8 @@ interface AsyncExecutionContext {
 	currentModel?: ParentModel;
 	/** Optional model-scope enforcement resolved from subagent settings. */
 	modelScope?: ModelScopeConfig;
-	/** Whether the parent session has an interactive UI. */
-	interactive?: boolean;
+	/** Whether the parent session can receive a completion wake after this turn. */
+	deferredWake?: boolean;
 }
 
 export const DEFAULT_ASYNC_TIMEOUT_MS = 30 * 60 * 1000;
@@ -301,11 +301,11 @@ export type AsyncRunnerStepBuildResult =
 	}
 	| { error: string };
 
-export function formatAsyncStartedMessage(headline: string, interactive: boolean): string {
-	const guidance = interactive
+export function formatAsyncStartedMessage(headline: string, deferredWake: boolean): string {
+	const guidance = deferredWake
 		? [
 			"The async run is detached and running in the background.",
-			"You are in an interactive session. By default, return control to the user now; Pi will wake you on completion when the run finishes or needs attention. Do NOT call subagent_wait() merely to wait, and do not run sleep/polling loops to wait for it.",
+			"This session stays active after the current turn. By default, return control to the user now; Pi will wake you on completion when the run finishes or needs attention. Do NOT call subagent_wait() merely to wait, and do not run sleep/polling loops to wait for it.",
 			"When you need an explicit wake for one known run but do not need same-turn results, call subagent_wait({ id: \"...\", nonBlocking: true }) to arm a subscription and return immediately.",
 			"Override the default and call blocking subagent_wait() before ending the turn only when the current request is run-to-completion — for example, the user asked you to report results back here before continuing, or a skill must finish in one turn. In that case, call subagent_wait() to block until the run completes so its results are delivered in this turn instead of deferred.",
 			"Otherwise, continue any independent work or return control to the user. Use subagent({ action: \"status\", id: \"...\" }) for a one-shot status/result or to inspect a blocked/stale run, never as a wait loop.",
@@ -1288,7 +1288,7 @@ export function executeAsyncChain(
 		.join(" -> ");
 
 	return {
-		content: [{ type: "text", text: formatAsyncStartedMessage(`Async ${resultMode}: ${chainDesc} [${id}]`, ctx.interactive === true) }],
+		content: [{ type: "text", text: formatAsyncStartedMessage(`Async ${resultMode}: ${chainDesc} [${id}]`, ctx.deferredWake === true) }],
 		details: { mode: resultMode, runId: id, results: [], asyncId: id, asyncDir, workflowGraph, ...(capabilityCeiling ? { capabilityCeiling } : {}), ...(params.parentWorkflowRunId ? { parentWorkflowRunId: params.parentWorkflowRunId } : {}), ...(params.workflowKey ? { workflowKey: params.workflowKey } : {}), ...(params.timeoutMs !== undefined ? { timeoutMs: params.timeoutMs, deadlineAt } : {}), ...(params.turnBudget ? { turnBudget: params.turnBudget } : {}), ...(params.toolBudget ? { toolBudget: params.toolBudget } : {}), ...(initialUsageBudget ? { usageBudget: initialUsageBudget } : {}) },
 	};
 }
@@ -1707,7 +1707,7 @@ export function executeAsyncSingle(
 	}
 
 	return {
-		content: [{ type: "text", text: formatAsyncStartedMessage(`Async: ${agent} [${id}]`, ctx.interactive === true) }],
+		content: [{ type: "text", text: formatAsyncStartedMessage(`Async: ${agent} [${id}]`, ctx.deferredWake === true) }],
 		details: { mode: "single", runId: id, results: [], asyncId: id, asyncDir, launchContractDigest, launchResolvedExtensions, ...(capabilityCeiling ? { capabilityCeiling } : {}), ...(params.context ? { context: params.context } : {}), ...(timeoutMs !== undefined ? { timeoutMs, deadlineAt } : {}), ...(params.turnBudget ? { turnBudget: params.turnBudget } : {}), ...(params.toolBudget ? { toolBudget: resolvedToolBudget.budget ?? params.toolBudget } : {}), ...(initialUsageBudget ? { usageBudget: initialUsageBudget } : {}) } as Details,
 	};
 }

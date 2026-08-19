@@ -1776,20 +1776,20 @@ describe("async execution utilities", { skip: !available ? "pi packages not avai
 		assert.equal(startedEvent(singleId).goal, "[prompt redacted]");
 		await waitForAsyncResultFile(singleId, 30_000);
 
-		mockPi.onCall({ output: "interactive done" });
-		const interactiveId = `async-handoff-interactive-${Date.now().toString(36)}`;
-		const interactiveResult = executeAsyncSingle(interactiveId, {
+		mockPi.onCall({ output: "deferred done" });
+		const deferredId = `async-handoff-deferred-${Date.now().toString(36)}`;
+		const deferredResult = executeAsyncSingle(deferredId, {
 			agent: "worker",
-			task: "Interactive handoff",
+			task: "Deferred handoff",
 			agentConfig: makeAgent("worker"),
 			...commonParams,
-			ctx: { ...commonParams.ctx, interactive: true },
+			ctx: { ...commonParams.ctx, deferredWake: true },
 		});
-		assert.match(interactiveResult.content[0]?.text ?? "", /interactive session/);
-		assert.match(interactiveResult.content[0]?.text ?? "", /return control to the user/);
-		assert.match(interactiveResult.content[0]?.text ?? "", /Do NOT call subagent_wait\(\) merely to wait/);
-		assert.doesNotMatch(interactiveResult.content[0]?.text ?? "", /auto-drain/);
-		await waitForAsyncResultFile(interactiveId, 30_000);
+		assert.match(deferredResult.content[0]?.text ?? "", /session stays active/);
+		assert.match(deferredResult.content[0]?.text ?? "", /return control to the user/);
+		assert.match(deferredResult.content[0]?.text ?? "", /Do NOT call subagent_wait\(\) merely to wait/);
+		assert.doesNotMatch(deferredResult.content[0]?.text ?? "", /auto-drain/);
+		await waitForAsyncResultFile(deferredId, 30_000);
 
 		mockPi.onCall({ output: "parallel one done" });
 		mockPi.onCall({ output: "parallel two done" });

@@ -26,6 +26,7 @@ import { SUBAGENT_WATCHDOG_WARNING_TYPE } from "../../watchdog/types.ts";
 import { resolveWaitToolConfig } from "../background/wait-config.ts";
 import { registerWaitTool } from "../background/wait-tool.ts";
 import { drainOutstandingWork } from "../background/auto-drain.ts";
+import { requiresHeadlessDrain } from "../background/session-mode.ts";
 
 const SUBAGENT_INHERIT_PROJECT_CONTEXT_ENV = "PI_SUBAGENT_INHERIT_PROJECT_CONTEXT";
 const SUBAGENT_INHERIT_SKILLS_ENV = "PI_SUBAGENT_INHERIT_SKILLS";
@@ -595,7 +596,7 @@ export default function registerSubagentPromptRuntime(pi: ExtensionAPI): void {
 		refreshChildToolDiagnostic(pi);
 	});
 	onRuntimeEvent("agent_end", async (_event: unknown, ctx: unknown) => {
-		if ((ctx as { hasUI?: boolean } | undefined)?.hasUI === true) return;
+		if (!requiresHeadlessDrain(ctx as ExtensionContext)) return;
 		await drainOutstandingWork({ state: waitState, events: pi.events });
 	});
 	const structuredOutputPath = process.env[STRUCTURED_OUTPUT_CAPTURE_ENV];
